@@ -2,10 +2,32 @@
 import Welcome from '../components/Welcome.astro';
 import Layout from '../layouts/Layout.astro';
 
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const isStaging =
+	import.meta.env.PUBLIC_SITE_ENV === 'staging' || import.meta.env.VERCEL_ENV === 'preview';
 ---
 
 <Layout>
+	{isStaging && (
+		<div class="staging-banner" role="status">
+			STAGING — ambiente de preview protegido
+		</div>
+	)}
 	<Welcome />
 </Layout>
+
+<style>
+	.staging-banner {
+		position: sticky;
+		top: 0;
+		z-index: 1000;
+		padding: 0.6rem 1rem;
+		text-align: center;
+		font-family: ui-monospace, 'Cascadia Code', 'Segoe UI Mono', monospace;
+		font-size: 0.85rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		color: #1a1a1a;
+		background: #f5c518;
+		border-bottom: 2px solid #c9a012;
+	}
+</style>
