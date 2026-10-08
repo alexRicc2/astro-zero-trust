@@ -1,6 +1,15 @@
 import { defineMiddleware } from 'astro:middleware';
 
 export const onRequest = defineMiddleware((context, next) => {
+
+	console.log({
+    url: context.url.href,
+    stagingHeader: context.request.headers.get('x-staging-auth-token'),
+    cfAssertion: context.request.headers.get('cf-access-jwt-assertion'),
+    expected: Boolean(import.meta.env.STAGING_SHARED_SECRET),
+  });
+
+
 	const isStaging =
 		import.meta.env.PUBLIC_SITE_ENV === 'staging' || process.env.VERCEL_ENV === 'preview';
 
