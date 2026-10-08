@@ -1,34 +1,65 @@
 import { defineMiddleware } from 'astro:middleware';
 
+function getStagingSecret(): string | undefined {
+	// Runtime on Vercel Edge (preferred) — not baked only at build time
+	const fromProcess = process.env.STAGING_SHARED_SECRET;
+	if (fromProcess) return fromProcess;
+
+	const fromImportMeta = import.meta.env.STAGING_SHARED_SECRET;
+	return typeof fromImportMeta === 'string' && fromImportMeta.length > 0
+		? fromImportMeta
+		: undefined;
+}
+
 export const onRequest = defineMiddleware((context, next) => {
-
-	console.log({
-    url: context.url.href,
-    stagingHeader: context.request.headers.get('x-staging-auth-token'),
-    cfAssertion: context.request.headers.get('cf-access-jwt-assertion'),
-    expected: Boolean(import.meta.env.STAGING_SHARED_SECRET),
-  });
-
-
 	const isStaging =
-		import.meta.env.PUBLIC_SITE_ENV === 'staging' || process.env.VERCEL_ENV === 'preview';
+		import.meta.env.PUBLIC_SITE_ENV === 'staging' ||
+		process.env.VERCEL_ENV === 'preview' ||
+		import.meta.env.VERCEL_ENV === 'preview';
 
-	// Se não estiver em staging, não executa checagem de token
 	if (!isStaging) {
 		return next();
 	}
 
-	const expectedSecret = import.meta.env.STAGING_SHARED_SECRET;
+	const expectedSecret = getStagingSecret();
 	const token = context.request.headers.get('x-staging-auth-token');
 
-	if (!expectedSecret) {
-		console.error('STAGING_SHARED_SECRET não está configurado.');
-		return new Response('Configuração de segurança incompleta.', { status: 500 });
+	const reason = !expectedSecret
+		? 'secret-missing'
+		: !token
+			? 'header-missing'
+			: token !== expectedSecret
+				? 'token-mismatch'
+				: 'ok';
+
+	console.log(
+		JSON.stringify({
+			msg: 'staging-auth',
+			reason,
+			url: context.url.href,
+			hasHeader: Boolean(token),
+			hasSecret: Boolean(expectedSecret),
+			headerLen: token?.length ?? 0,
+			secretLen: expectedSecret?.length ?? 0,
+			vercelEnv: process.env.VERCEL_ENV ?? null,
+			publicSiteEnv: import.meta.env.PUBLIC_SITE_ENV ?? null,
+		}),
+	);
+
+	if (reason === 'secret-missing') {
+		return new Response('Configuração de segurança incompleta.', {
+			status: 500,
+			headers: { 'x-staging-debug': reason },
+		});
 	}
 
-	if (!token || token !== expectedSecret) {
+	if (reason !== 'ok') {
 		return new Response('Acesso direto proibido. Acesse via staging oficial.', {
 			status: 403,
+			headers: {
+				// Visível no DevTools → Network → Response Headers (sem expor o secret)
+				'x-staging-debug': reason,
+			},
 		});
 	}
 
