@@ -46,20 +46,23 @@ export const onRequest = defineMiddleware((context, next) => {
 		}),
 	);
 
+	const denyHeaders = {
+		'x-staging-debug': reason,
+		// Impede a CDN da Vercel de cachear o 403 e servir de novo com HIT
+		'cache-control': 'private, no-store, no-cache, must-revalidate',
+	};
+
 	if (reason === 'secret-missing') {
 		return new Response('Configuração de segurança incompleta.', {
 			status: 500,
-			headers: { 'x-staging-debug': reason },
+			headers: denyHeaders,
 		});
 	}
 
 	if (reason !== 'ok') {
 		return new Response('Acesso direto proibido. Acesse via staging oficial.', {
 			status: 403,
-			headers: {
-				// Visível no DevTools → Network → Response Headers (sem expor o secret)
-				'x-staging-debug': reason,
-			},
+			headers: denyHeaders,
 		});
 	}
 
