@@ -8,9 +8,12 @@ const isStaging =
 
 // https://astro.build/config
 export default defineConfig({
-	output: 'static',
+	// Static na main. Em staging precisa de server: com output static o middleware
+	// roda no BUILD (sem o header), grava o 403 no HTML, e a Edge da Vercel
+	// NÃO intercepta páginas prerenderizadas em request-time.
+	output: isStaging ? 'server' : 'static',
 	adapter: vercel({
-		// Só injeta a camada de Edge Middleware na Vercel se for build de staging
-		edgeMiddleware: isStaging,
+		// Só injeta Edge Middleware na Vercel em builds de staging
+		middlewareMode: isStaging ? 'edge' : 'classic',
 	}),
 });

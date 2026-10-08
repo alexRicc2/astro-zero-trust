@@ -1,7 +1,6 @@
 import { defineMiddleware } from 'astro:middleware';
 
 function getStagingSecret(): string | undefined {
-	// Runtime on Vercel Edge (preferred) — not baked only at build time
 	const fromProcess = process.env.STAGING_SHARED_SECRET;
 	if (fromProcess) return fromProcess;
 
@@ -36,19 +35,17 @@ export const onRequest = defineMiddleware((context, next) => {
 		JSON.stringify({
 			msg: 'staging-auth',
 			reason,
-			url: context.url.href,
+			path: context.url.pathname,
 			hasHeader: Boolean(token),
 			hasSecret: Boolean(expectedSecret),
 			headerLen: token?.length ?? 0,
 			secretLen: expectedSecret?.length ?? 0,
 			vercelEnv: process.env.VERCEL_ENV ?? null,
-			publicSiteEnv: import.meta.env.PUBLIC_SITE_ENV ?? null,
 		}),
 	);
 
 	const denyHeaders = {
 		'x-staging-debug': reason,
-		// Impede a CDN da Vercel de cachear o 403 e servir de novo com HIT
 		'cache-control': 'private, no-store, no-cache, must-revalidate',
 	};
 
